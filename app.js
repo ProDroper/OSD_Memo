@@ -4,7 +4,7 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-
+var mongoose = require('mongoose');
 var index = require('./routes/index');
 var users = require('./routes/users');
 
@@ -22,7 +22,75 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', index);
+
+
+mongoose.connect('mongodb://joon:1234@ds153730.mlab.com:53730/mern');
+
+var Schema = mongoose.Schema;
+
+var MemoSchema = new Schema({
+    title     : String,
+    body      : String,
+    date      : {type: Date, default:Date.now}
+});
+
+var privateMemo = mongoose.model('privateMemo', MemoSchema);
+var publicMemo = mongoose.model('publicMemo', MemoSchema);
+
+/* GET home page. */
+app.get('/', function(req, res) {
+  res.redirect('/public');
+});
+
+app.get('/public', function(req, res) {
+    if (req.query.title) {
+        console.log(req.query.title)
+        publicMemo.find({title: new RegExp(req.query.title, "i")}, (err, memos) => {
+            res.render('public', {memos: memos});
+        })
+    }
+    publicMemo.find({}, (err, memos) => {
+        res.render('public', {memos: memos});
+    })
+});
+
+app.get('/private', function(req, res) {
+    if (req.query.title) {
+        console.log(req.query.title)
+        privateMemo.find({title: new RegExp(req.query.title, "i")}, (err, memos) => {
+            res.render('private', {memos: memos});
+        })
+    }
+    privateMemo.find({}, (err, memos) => {
+        res.render('private', {memos: memos});
+    })
+});
+
+app.get('/:id/add', (req, res) => {
+    res.render('add', {type: req.params.id})
+});
+
+app.post('/public', function(req, res) {
+    var newMemo = new publicMemo();
+    newMemo.title = req.body.title;
+    newMemo.body = req.body.body;
+    newMemo.save((err) => {
+      if(err) console.log(err);
+      console.log(newMemo)
+      res.redirect('/public');
+    });
+});
+
+app.post('/private', function(req, res) {
+  var newMemo = new privateMemo();
+    newMemo.title = req.body.title;
+    newMemo.body = req.body.body;
+    newMemo.save((err) => {
+      if(err) console.log(err);
+      res.redirect('/private');
+    });
+});
+
 app.use('/users', users);
 
 // catch 404 and forward to error handler
